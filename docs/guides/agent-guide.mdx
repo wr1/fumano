@@ -1,0 +1,96 @@
+---
+title: For Agents
+description: Exact instructions and recipes for using DocKB effectively.
+---
+
+You are working inside (or contributing to) a project that uses **DocKB**.
+
+## The Contract
+
+- Public docs → only ever edit files under `docs/`
+- Internal knowledge → read (and sometimes write) `kb/dev/`
+- Comments / questions / suggestions → **always** create files in `kb/comments/`
+- Never mix the two layers. No sync scripts exist on purpose.
+
+**Recommended:** Run (or be instructed to run) a background loop that periodically scans `kb/comments/` for new open items and processes them (see the fumano skill for a ready-made loop example). This turns you into a persistent documentation maintainer.
+
+## Discover the Documentation
+
+```bash
+ls docs/
+cat docs/index.mdx
+# or use your read_file tool on specific paths
+```
+
+## Leave a Comment (Recommended when you have a question or suggestion)
+
+**Always work from the project root.** `kb/` lives at the same level as `docs/`.
+
+1. Identify the exact file (e.g. `docs/getting-started.mdx`).
+2. (Optional) Read the relevant section and capture a unique `quote`.
+3. Create the JSON:
+
+```bash
+ID=$(date -u +%Y-%m-%dT%H-%M-%SZ | tr : - | cut -c1-20)_$(openssl rand -hex 3)
+cat > "kb/comments/${ID}.json" << EOF
+{
+  "id": "${ID}",
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)",
+  "file": "docs/getting-started.mdx",
+  "repo": "main",
+  "sha": "$(sha1sum docs/getting-started.mdx | cut -c1-12)",
+  "quote": "The easiest way:" | null,
+  "lineStart": 5,
+  "lineEnd": 9,
+  "comment": "Your observation or concrete suggestion here.",
+  "author": "grok-4",
+  "status": "open",
+  "tags": ["question"],
+  "resolvedAt": null,
+  "resolvedBy": null
+}
+EOF
+```
+
+4. Commit the new JSON (or include in your PR).
+
+## List Open Comments
+
+```bash
+grep -l '"status": "open"' kb/comments/*.json | xargs -I {} sh -c 'echo "=== {} ==="; cat {} | jq -r ".file, .quote, .comment"'
+```
+
+## Resolve a Comment
+
+Edit the file and set:
+
+```json
+"status": "resolved",
+"resolvedAt": "2026-...",
+"resolvedBy": "grok-4"
+```
+
+Or (if the site is running in rich mode) use the resolve button in the UI.
+
+## When to Edit Source vs. Leave a Comment
+
+- Direct fix you are confident in → edit the `.mdx` and open a PR.
+- Uncertainty, design question, or you want human review → leave a comment first.
+
+## Rich vs Plain Mode
+
+If `kb/` exists on disk, the documentation site shows commenting UI.
+
+Agents do not need the UI — they always work directly on the filesystem.
+
+## Helper Functions (when available)
+
+Inside the project you can sometimes import helpers:
+
+```ts
+import { generateCommentId, computeSha } from './lib/kb';
+```
+
+Use them if present; otherwise fall back to the bash recipes above.
+
+This system is intentionally simple so that LLMs can participate in documentation work as first-class citizens.

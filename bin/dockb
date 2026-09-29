@@ -1,0 +1,27 @@
+#!/bin/sh
+# dockb — serve the current project's docs/ (+ kb/) with the shared DocKB
+# runtime, so projects need no node_modules of their own.
+#
+# Usage: from the project root (the directory containing docs/):
+#   dockb [port]        # default port 3000
+#
+# The runtime is one installed copy of the fumano template; override its
+# location with DOCKB_RUNTIME (default ~/apps/dockb-runtime).
+set -e
+
+RUNTIME="${DOCKB_RUNTIME:-$HOME/apps/dockb-runtime}"
+ROOT="$PWD"
+
+if [ ! -d "$ROOT/docs" ]; then
+  echo "dockb: no docs/ directory in $ROOT — run from the project root" >&2
+  exit 1
+fi
+if [ ! -d "$RUNTIME/node_modules" ]; then
+  echo "dockb: runtime not installed at $RUNTIME — clone the fumano template there and npm install" >&2
+  exit 1
+fi
+
+PORT="${1:-3000}"
+echo "dockb: serving $ROOT on http://localhost:$PORT (runtime: $RUNTIME)"
+cd "$RUNTIME"
+exec env DOCKB_ROOT="$ROOT" npm run dev -- -p "$PORT"

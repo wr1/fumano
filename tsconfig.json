@@ -1,0 +1,71 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "collections/*": [
+        "./.source/*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts",
+    ".next-projects/docs-142c3934/types/**/*.ts",
+    ".next-projects/docs-142c3934/dev/types/**/*.ts",
+    ".next-projects/dockbtest-d912cce4/types/**/*.ts",
+    ".next-projects/dockbtest-d912cce4/dev/types/**/*.ts",
+    ".next-projects/docs-24b48a2e/types/**/*.ts",
+    ".next-projects/docs-24b48a2e/dev/types/**/*.ts",
+    ".next-projects/docs-f38a85ab/types/**/*.ts",
+    ".next-projects/docs-f38a85ab/dev/types/**/*.ts",
+    ".next-projects/evid_reason-bf6ebd80/types/**/*.ts",
+    ".next-projects/evid_reason-bf6ebd80/dev/types/**/*.ts",
+    ".next-projects/hsh-78de4ff6/types/**/*.ts",
+    ".next-projects/hsh-78de4ff6/dev/types/**/*.ts",
+    ".next-projects/ai_blade_defect-5324a9c7/types/**/*.ts",
+    ".next-projects/ai_blade_defect-5324a9c7/dev/types/**/*.ts",
+    ".next-projects/b3_tex-663153c5/types/**/*.ts",
+    ".next-projects/b3_tex-663153c5/dev/types/**/*.ts",
+    ".next-projects/b3_root-70c42fbc/types/**/*.ts",
+    ".next-projects/b3_root-70c42fbc/dev/types/**/*.ts",
+    ".next-projects/b3_core-e9784c21/types/**/*.ts",
+    ".next-projects/b3_core-e9784c21/dev/types/**/*.ts",
+    ".next-projects/b3_afopt-ae85fc3f/types/**/*.ts",
+    ".next-projects/b3_afopt-ae85fc3f/dev/types/**/*.ts",
+    ".next-projects/b3_fatigue-3ebd657a/types/**/*.ts",
+    ".next-projects/b3_fatigue-3ebd657a/dev/types/**/*.ts",
+    ".next-projects/b3_secfem-d7471dd3/types/**/*.ts",
+    ".next-projects/b3_secfem-d7471dd3/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

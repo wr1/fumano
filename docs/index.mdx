@@ -1,0 +1,30 @@
+---
+title: DocKB
+description: Reusable documentation system for docs-driven development. Fumadocs + optional kb/ for comments and internal knowledge. Built for humans and AI agents.
+---
+
+**DocKB** is a documentation system that gives you clean, user-facing docs in `docs/` powered by [Fumadocs](https://fumadocs.dev), with an optional `kb/` layer for rich collaboration.
+
+## Two Modes
+
+- **Plain mode** — No `kb/` folder. Clean public documentation only. No commenting UI.
+- **Rich mode** — `kb/` folder present. Commenting UI is enabled + access to internal developer knowledge in `kb/dev/`.
+
+The switch is automatic: just the presence of the `kb/` directory at the project root.
+
+## Core Ideas
+
+- Main documentation lives only in `docs/`.
+- `kb/comments/` stores every comment as a flat, timestamped JSON file.
+- `kb/dev/` holds internal notes (never synced into public docs).
+- No build step or sync between layers.
+- Designed to be extremely usable by agents (direct file reads/writes).
+
+## Next Steps
+
+- [Getting Started](/docs/guides/getting-started) — How to adopt this in your project.
+- [Architecture](/docs/reference/architecture) — Why this design.
+- [Commenting](/docs/reference/commenting) — The comment format and UI.
+- [For Agents](/docs/guides/agent-guide) — Exact workflows, commands, and JSON recipes.
+
+This site itself is a living DocKB instance.

@@ -1,0 +1,194 @@
+#!/bin/sh
+# dockb-export — static HTML export of a project's docs/ (+ public/) for
+# shipping / GitHub Pages. No Node server required to serve the result.
+#
+# Usage (from the project root, the directory containing docs/):
+#   dockb-export [outdir] [basePath]
+#
+# Examples:
+#   dockb-export                  # → ./site  (base path /)
+#   dockb-export site /b3_core    # → ./site  for https://user.github.io/b3_core/
+set -e
+
+RUNTIME="${DOCKB_RUNTIME:-$HOME/apps/dockb-runtime}"
+ROOT="$PWD"
+OUT="${1:-site}"
+BASE_PATH="${2:-${DOCKB_BASE_PATH:-}}"
+STASH="$RUNTIME/.dockb-export-stash"
+
+if [ ! -d "$ROOT/docs" ]; then
+  echo "dockb-export: no docs/ in $ROOT — run from the project root" >&2
+  exit 1
+fi
+if [ ! -d "$RUNTIME/node_modules" ]; then
+  echo "dockb-export: runtime not installed at $RUNTIME" >&2
+  exit 1
+fi
+
+case "$BASE_PATH" in
+  ""|"/") BASE_PATH="" ;;
+  /*) ;;
+  *) BASE_PATH="/$BASE_PATH" ;;
+esac
+BASE_PATH="${BASE_PATH%/}"
+
+OUT_ABS="$(cd "$ROOT" && mkdir -p "$OUT" && cd "$OUT" && pwd)"
+echo "dockb-export: $ROOT → $OUT_ABS  basePath=${BASE_PATH:-/}"
+
+if [ -d "$ROOT/public" ]; then
+  echo "dockb-export: syncing public/ assets"
+  (cd "$ROOT/public" && tar cf - .) | (cd "$RUNTIME/public" && tar xf -)
+fi
+
+# Move request-time routes *outside* app/ so Next does not see them.
+rm -rf "$STASH"
+mkdir -p "$STASH"
+hide() {
+  # Request-time only + route handlers that conflict with static HTML paths.
+  for name in '[...path]' api dev llms.mdx llms.txt; do
+    src="$RUNTIME/app/$name"
+    if [ -e "$src" ]; then
+      echo "dockb-export: stash app/$name"
+      mv "$src" "$STASH/"
+    fi
+  done
+}
+PATCHED=""
+patch_static() {
+  # Server Actions (comments) cannot ship in a static export — strip them.
+  page="$RUNTIME/app/docs/[[...slug]]/page.tsx"
+  if [ -f "$page" ] && grep -q "CommentsPanel" "$page" 2>/dev/null; then
+    cp "$page" "$page.dockb-bak"
+    python3 - "$page" <<'PY'
+import sys, re
+p = sys.argv[1]
+t = open(p).read()
+t = re.sub(r"import \{ CommentsPanel \} from '@/components/comments/CommentsPanel';\n", "", t)
+t = re.sub(r"import \{ SelectionCommenter \} from '@/components/comments/SelectionCommenter';\n", "", t)
+t = re.sub(
+    r"\s*\{rich && \(\s*<>\s*<CommentsPanel file=\{file\} />\s*<SelectionCommenter />\s*</>\s*\)\}",
+    "",
+    t,
+    flags=re.S,
+)
+t = re.sub(r"\n\s*const rich = hasKB\(\);\n", "\n", t)
+# PageActions fetch /llms.mdx which we hide on static — drop the bar.
+t = re.sub(r"import \{ PageActions \} from '@/components/PageActions';\n", "", t)
+t = re.sub(
+    r"\s*<PageActions\s*markdownUrl=\{`/llms\.mdx\$\{page\.url\}`\}\s*githubUrl=\{githubFileUrl\(file\)\}\s*/>",
+    "",
+    t,
+    flags=re.S,
+)
+open(p, "w").write(t)
+print("dockb-export: strip comments + page-actions from docs page")
+PY
+    PATCHED="$PATCHED $page"
+  fi
+  if [ -f "$RUNTIME/lib/actions.ts" ]; then
+    mv "$RUNTIME/lib/actions.ts" "$STASH/actions.ts"
+    echo "dockb-export: stash lib/actions.ts"
+  fi
+}
+restore_all() {
+  for f in $PATCHED; do
+    [ -f "$f.dockb-bak" ] && mv "$f.dockb-bak" "$f"
+  done
+  if [ -d "$STASH" ]; then
+    for item in "$STASH"/*; do
+      [ -e "$item" ] || continue
+      base=$(basename "$item")
+      if [ "$base" = "actions.ts" ]; then
+        dest="$RUNTIME/lib/actions.ts"
+      else
+        dest="$RUNTIME/app/$base"
+      fi
+      [ -e "$dest" ] && rm -rf "$dest"
+      mv "$item" "$dest"
+      echo "dockb-export: restore $base"
+    done
+    rmdir "$STASH" 2>/dev/null || true
+  fi
+}
+trap restore_all EXIT INT TERM
+hide
+patch_static
+
+# Use a dedicated distDir for static builds to avoid cross-project type pollution.
+DIST_NAME="export-$(basename "$ROOT")"
+cd "$RUNTIME"
+export DOCKB_ROOT="$ROOT"
+export DOCKB_STATIC_EXPORT=1
+export DOCKB_BASE_PATH="$BASE_PATH"
+export DOCKB_DIST_DIR=".next-export/$DIST_NAME"
+
+rm -rf "$RUNTIME/out" "$RUNTIME/$DOCKB_DIST_DIR"
+
+npm run build
+
+# Next 16 + custom distDir writes the static HTML *into* distDir (not ./out).
+SRC_OUT=""
+if [ -f "$RUNTIME/$DOCKB_DIST_DIR/index.html" ]; then
+  SRC_OUT="$RUNTIME/$DOCKB_DIST_DIR"
+elif [ -d "$RUNTIME/out" ]; then
+  SRC_OUT="$RUNTIME/out"
+else
+  echo "dockb-export: could not find static export output" >&2
+  find "$RUNTIME" -maxdepth 4 -name 'index.html' 2>/dev/null | head -20
+  exit 1
+fi
+echo "dockb-export: copy from $SRC_OUT"
+
+mkdir -p "$OUT_ABS"
+find "$OUT_ABS" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+(cd "$SRC_OUT" && tar cf - .) | (cd "$OUT_ABS" && tar xf -)
+
+# MDX raw <img src="/figures/..."> is not rewritten by Next basePath (only
+# framework assets get /repo/...). On GitHub Pages that loads
+# https://user.github.io/figures/... (404) instead of .../repo/figures/...
+# Prefix project-public absolute URLs when exporting with a base path.
+if [ -n "$BASE_PATH" ]; then
+  echo "dockb-export: prefix public asset URLs with basePath=$BASE_PATH"
+  BASE_PATH="$BASE_PATH" OUT_ABS="$OUT_ABS" python3 - <<'PY'
+import os, re
+from pathlib import Path
+
+base = os.environ["BASE_PATH"].rstrip("/")
+root = Path(os.environ["OUT_ABS"])
+# Paths under the project public/ tree (and site root favicon), not /_next/.
+pat = re.compile(
+    r"""(?P<q>["'(])/(?P<p>figures/|embeds/|favicon\.ico)""",
+)
+n_files = n_hits = 0
+for path in root.rglob("*"):
+    if not path.is_file():
+        continue
+    if path.suffix.lower() not in {".html", ".txt", ".js", ".css", ".json", ".map"}:
+        continue
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        continue
+    def repl(m: re.Match[str]) -> str:
+        return f"{m.group('q')}{base}/{m.group('p')}"
+    new, k = pat.subn(repl, text)
+    if k:
+        path.write_text(new, encoding="utf-8")
+        n_files += 1
+        n_hits += k
+print(f"dockb-export: rewrote {n_hits} asset URL(s) in {n_files} file(s)")
+PY
+fi
+
+{
+  echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "project=$ROOT"
+  echo "basePath=${BASE_PATH:-/}"
+} > "$OUT_ABS/.dockb-export"
+
+echo "dockb-export: done → $OUT_ABS"
+if [ -n "$BASE_PATH" ]; then
+  echo "  preview:  make docs-preview   # serves with basePath $BASE_PATH"
+else
+  echo "  preview:  python3 -m http.server -d $OUT 4173"
+fi

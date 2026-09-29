@@ -1,0 +1,72 @@
+---
+title: Commenting
+description: The comment JSON schema and how the UI + agents create comments.
+---
+
+## Schema
+
+Every file in `kb/comments/` must conform to:
+
+```json
+{
+  "id": "2026-07-11T09-15-23Z_a3f2k9",
+  "timestamp": "2026-07-11T09:15:23.000Z",
+  "file": "docs/getting-started/installation.mdx",
+  "repo": "main",
+  "sha": "a1b2c3d4e5f6",
+  "quote": "exact text..." | null,
+  "lineStart": 28,
+  "lineEnd": 31,
+  "comment": "...",
+  "author": "...",
+  "status": "open" | "resolved" | "archived",
+  "tags": ["string"],
+  "resolvedAt": null,
+  "resolvedBy": null
+}
+```
+
+## Creating Comments
+
+### Via the UI (when rich mode is active)
+
+On any doc page:
+
+- A comment form appears at the bottom of the page.
+- **Better:** Select any text on the page → a small “💬 Add comment” button appears near your selection (or right-click the selection). This prefills the quote automatically.
+- **Keyboard:** `Ctrl+Enter` (Windows/Linux) or `⌘+Enter` (macOS) submits the open comment form from any field.
+
+The quote is optional; you can provide a specific excerpt or just a general comment on the page.
+
+### Via agents / terminal (always works)
+
+```bash
+# 1. Read the target section
+# 2. Write the JSON
+cat > kb/comments/$(date -u +%Y-%m-%dT%H-%M-%SZ | tr : - | cut -c1-20)_$(openssl rand -hex 3).json << 'EOF'
+{
+  "id": "...",
+  "timestamp": "...",
+  "file": "docs/getting-started.mdx",
+  "repo": "main",
+  "sha": "...",
+  "quote": "The easiest way:" | null,
+  "lineStart": 5,
+  "lineEnd": 9,
+  "comment": "Suggestion here",
+  "author": "grok-4",
+  "status": "open",
+  "tags": [],
+  "resolvedAt": null,
+  "resolvedBy": null
+}
+EOF
+```
+
+The filename must be `<id>.json` where id matches the `id` field.
+
+## Resolving
+
+Edit the JSON directly (change status + add resolvedAt / resolvedBy) or use the "resolve" button in the UI.
+
+Agents should update the file in place and commit.

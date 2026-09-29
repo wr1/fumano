@@ -1,0 +1,68 @@
+---
+title: Getting Started
+description: Set up DocKB in a new or existing project.
+---
+
+## Using as a Template
+
+The easiest way:
+
+1. Use this repository as a GitHub template (or clone it).
+2. `npm install`
+3. `npm run dev`
+
+You now have a working Fumadocs site sourcing from `docs/`.
+
+## Enabling Rich Mode (Comments + Internal KB)
+
+**Run these commands from the root of your project** (the folder that contains your `docs/` directory — do **not** cd into `docs/`). `kb/` must be created as a sibling of `docs/`, never as `docs/kb`.
+
+Treat `kb/` as its **own git repository** (strongly recommended):
+
+```bash
+echo "kb/" >> .gitignore
+mkdir -p kb/dev kb/comments
+cd kb
+git init
+git add .
+git commit -m "init kb repo"
+cd ..
+git add .gitignore
+git commit -m "kb/ is now its own repo"
+```
+
+**Verify:**
+```bash
+[ -d kb ] && [ ! -d docs/kb ] && echo "Correct location" || echo "kb/ should be at project root next to docs/"
+```
+
+(See the fumano skill or `docs/agent-guide.mdx` for the full recipe and why.)
+
+Add a file in `kb/dev/` and restart the dev server. The site will automatically show rich features (commenting UI, indicators).
+
+## Adding Content
+
+Add `.mdx` files under `docs/`. Use `meta.json` files to control the sidebar tree (see Fumadocs docs).
+
+Example:
+
+```mdx
+---
+title: My Page
+description: Short summary.
+---
+
+## Heading
+
+Content here. You can use all standard MDX + Fumadocs components.
+```
+
+## Project Structure (Key Parts)
+
+- `docs/` — Your public documentation (Fumadocs source)
+- `kb/comments/*.json` — All comments (flat, timestamped)
+- `kb/dev/` — Internal only knowledge (now rendered with full Fumadocs UI + sidebar when rich mode is active)
+- `app/docs/` — The Fumadocs routes
+- `lib/actions.ts` — Server Actions that write comments (when rich mode)
+
+See [Architecture](/docs/reference/architecture) for the full picture.
